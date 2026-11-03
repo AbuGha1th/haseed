@@ -36,6 +36,9 @@ header{padding:22px 0;display:flex;justify-content:space-between;align-items:cen
 .lang{border:1px solid var(--line);border-radius:99px;padding:5px 14px;font-size:14px;cursor:pointer;background:rgba(255,255,255,.06);color:var(--mute)}
 .lang:hover{color:var(--ink)}
 /* Arabic: its own font, no Latin tight tracking */
+/* second headline line: the same amber as "Get file", fading to light gold */
+h1 .hl{background:linear-gradient(100deg,#F2A33A 10%,#FFD58A 90%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  padding-bottom:.08em}
 html[lang=ar] body{font-family:"IBM Plex Sans Arabic",system-ui,sans-serif}
 html[lang=ar] .brand{font:700 22px "IBM Plex Sans Arabic"}
 html[lang=ar] h1{font:700 clamp(40px,6.2vw,84px)/1.15 "IBM Plex Sans Arabic";letter-spacing:0}
@@ -116,7 +119,7 @@ footer{padding:18px 0;font-size:13px;color:var(--mute)}
 
 <main>
   <section>
-    <h1 data-t="h1">Paste a link.<br>Get the file.</h1>
+    <h1 data-t="h1">Paste a link.<br><span class="hl">Get the file.</span></h1>
     <p class="lede" data-t="lede">Works with YouTube, Instagram, TikTok, X, Facebook and over a thousand other sites. Files save to Desktop/Haseed.</p>
     <form id="f" class="glass">
       <label for="url" hidden data-t="urlLabel">Video link</label>
@@ -155,7 +158,7 @@ const $ = id => document.getElementById(id);
 const isWin = navigator.userAgent.includes('Windows');
 const TEXT = {
   en: {
-    brand: 'Haseed', h1: 'Paste a link.<br>Get the file.',
+    brand: 'Haseed', h1: 'Paste a link.<br><span class="hl">Get the file.</span>',
     lede: 'Works with YouTube, Instagram, TikTok, X, Facebook and over a thousand other sites. Files save to Desktop/Haseed.',
     urlLabel: 'Video link', paste: 'Paste', go: 'Look up', ph: 'Your file will appear here', dl: 'Get file',
     reveal: isWin ? 'Show in Explorer' : 'Show in Finder', tray: 'Desktop/Haseed',
@@ -168,7 +171,7 @@ const TEXT = {
     labels: {},
   },
   ar: {
-    brand: 'حصيد', h1: 'ألصق الرابط.<br>واحصل على الملف.',
+    brand: 'حصيد', h1: 'ألصق الرابط.<br><span class="hl">واحصل على الملف.</span>',
     lede: 'يعمل مع يوتيوب وإنستغرام وتيك توك وإكس وفيسبوك وأكثر من ألف موقع آخر. تُحفَظ الملفات في مجلد Haseed على سطح المكتب.',
     urlLabel: 'رابط المقطع', paste: 'لصق', go: 'ابحث', ph: 'سيظهر ملفك هنا', dl: 'احصل على الملف',
     reveal: isWin ? 'إظهار في المستكشف' : 'إظهار في Finder', tray: 'سطح المكتب / Haseed',
