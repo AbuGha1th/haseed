@@ -119,7 +119,7 @@ footer{padding:18px 0;font-size:13px;color:var(--mute)}
 
 <main>
   <section>
-    <h1 data-t="h1">Paste a link.<br><span class="hl">Get the file.</span></h1>
+    <h1><span data-t="h1">Paste a link.</span><br><span class="hl" id="hl">Get the file.</span></h1>
     <p class="lede" data-t="lede">Works with YouTube, Instagram, TikTok, X, Facebook and over a thousand other sites. Files save to Desktop/Haseed.</p>
     <form id="f" class="glass">
       <label for="url" hidden data-t="urlLabel">Video link</label>
@@ -158,7 +158,9 @@ const $ = id => document.getElementById(id);
 const isWin = navigator.userAgent.includes('Windows');
 const TEXT = {
   en: {
-    brand: 'Haseed', h1: 'Paste a link.<br><span class="hl">Get the file.</span>',
+    brand: 'Haseed', h1: 'Paste a link.',
+    // second headline line follows the steps
+    steps: { idle: 'Get the file.', pick: 'Pick a quality.', getting: 'Getting it…', saved: 'Saved to Desktop.' },
     lede: 'Works with YouTube, Instagram, TikTok, X, Facebook and over a thousand other sites. Files save to Desktop/Haseed.',
     urlLabel: 'Video link', paste: 'Paste', go: 'Look up', ph: 'Your file will appear here', dl: 'Get file',
     reveal: isWin ? 'Show in Explorer' : 'Show in Finder', tray: 'Desktop/Haseed',
@@ -171,7 +173,8 @@ const TEXT = {
     labels: {},
   },
   ar: {
-    brand: 'حصيد', h1: 'ألصق الرابط.<br><span class="hl">واحصل على الملف.</span>',
+    brand: 'حصيد', h1: 'ألصق الرابط.',
+    steps: { idle: 'واحصل على الملف.', pick: 'اختر الجودة.', getting: 'جارٍ التحميل…', saved: 'وصل إلى سطح المكتب.' },
     lede: 'يعمل مع يوتيوب وإنستغرام وتيك توك وإكس وفيسبوك وأكثر من ألف موقع آخر. تُحفَظ الملفات في مجلد Haseed على سطح المكتب.',
     urlLabel: 'رابط المقطع', paste: 'لصق', go: 'ابحث', ph: 'سيظهر ملفك هنا', dl: 'احصل على الملف',
     reveal: isWin ? 'إظهار في المستكشف' : 'إظهار في Finder', tray: 'سطح المكتب / Haseed',
@@ -195,6 +198,8 @@ try { lang = localStorage.getItem('haseed-lang') || ''; } catch {}
 if (!TEXT[lang]) lang = (navigator.language || '').startsWith('ar') ? 'ar' : 'en';
 const t = key => TEXT[lang][key];
 const tr = s => TEXT[lang].labels[s] || s;
+let step = 'idle';
+function setStep(s) { step = s; $('hl').textContent = t('steps')[s]; }
 function applyLang() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
@@ -203,6 +208,7 @@ function applyLang() {
   $('lang').textContent = lang === 'ar' ? 'English' : 'العربية';
   $('lang').lang = lang === 'ar' ? 'en' : 'ar';
   document.title = t('brand');
+  setStep(step);
 }
 $('lang').onclick = () => {
   lang = lang === 'ar' ? 'en' : 'ar';
@@ -230,6 +236,7 @@ function setFill(pct) { $('fill').style.height = pct + '%'; }
 function readyToGet() {
   $('dl').hidden = false; $('dl').disabled = false; $('reveal').hidden = true;
   $('stage').textContent = ''; setFill(0); document.body.classList.remove('landed');
+  if (step !== 'idle') setStep('pick');
 }
 
 $('f').onsubmit = async e => {
@@ -254,7 +261,7 @@ $('f').onsubmit = async e => {
     $('opts').innerHTML = choices.map(([v, l], i) =>
       `<label><input type="radio" name="k" value="${v}" ${(pick ? v === String(pick) : i === 0) ? 'checked' : ''}>${l}</label>`).join('');
     $('note').textContent = '';
-    readyToGet(); msg('');
+    readyToGet(); msg(''); setStep('pick');
   } catch (err) { msg(err.message || t('unreadable'), true); }
   $('go').disabled = false;
 };
@@ -268,7 +275,7 @@ $('opts').onchange = () => {
 $('dl').onclick = async () => {
   const kind = document.querySelector('#opts input:checked').value;
   $('dl').disabled = true; $('go').disabled = true; msg('');
-  $('stage').textContent = t('starting');
+  $('stage').textContent = t('starting'); setStep('getting');
   try {
     const { id } = await (await call(`/api/start?kind=${kind}&url=` + encodeURIComponent(current))).json();
     for (;;) {
@@ -284,7 +291,7 @@ $('dl').onclick = async () => {
         $('stage').textContent = tr('Saved');
         $('dl').hidden = true; $('reveal').hidden = false;
         $('saved').textContent = j.saved;
-        document.body.classList.add('landed');
+        document.body.classList.add('landed'); setStep('saved');
         break;
       }
     }
