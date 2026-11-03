@@ -6,9 +6,11 @@ Paste a link, get the file. Haseed is a small page that runs on your own compute
 
 ![Haseed start screen](docs/home-v2.png)
 
-| Downloading | Arabic interface |
-|---|---|
-| ![Downloading a video, 46% done](docs/downloading-v2.png) | ![Saved, in Arabic](docs/saved-arabic-v2.png) |
+<p>
+  <img src="docs/downloading-v2.png" alt="Downloading a video, 46% done" width="49%">
+  <img src="docs/saved-arabic-v2.png" alt="Saved, in Arabic" width="49%">
+</p>
+<p><em>Left: downloading. Right: the Arabic interface after saving.</em></p>
 
 - Pick the quality: every size the video has, up to 4K, or MP3
 - Live progress while it downloads
