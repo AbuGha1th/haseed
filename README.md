@@ -4,11 +4,11 @@
 
 Paste a link, get the file. Haseed is a small page that runs on your own computer and downloads videos from YouTube, Instagram, TikTok, X, Facebook and [over a thousand other sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md), using [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 
-![Haseed start screen](docs/home.png)
+![Haseed start screen](docs/home-v2.png)
 
 | Downloading | Arabic interface |
 |---|---|
-| ![Downloading a video, 46% done](docs/downloading.png) | ![Saved, in Arabic](docs/saved-arabic.png) |
+| ![Downloading a video, 46% done](docs/downloading-v2.png) | ![Saved, in Arabic](docs/saved-arabic-v2.png) |
 
 - Pick the quality: every size the video has, up to 4K, or MP3
 - Live progress while it downloads
