@@ -35,6 +35,10 @@ header{padding:22px 0;display:flex;justify-content:space-between;align-items:cen
 .brand{font:800 20px "Bricolage Grotesque";letter-spacing:-.01em}
 .lang{border:1px solid var(--line);border-radius:99px;padding:5px 14px;font-size:14px;cursor:pointer;background:rgba(255,255,255,.06);color:var(--mute)}
 .lang:hover{color:var(--ink)}
+.tools{display:flex;gap:8px}
+.phonebox{position:absolute;inset-inline-end:24px;top:70px;z-index:5;border-radius:18px;padding:16px 18px;max-width:320px;font-size:14px;color:var(--mute)}
+.phonebox b{display:block;color:var(--ink);font-size:20px;margin:2px 0 10px;direction:ltr;text-align:start;word-break:break-all}
+.phonebox .pin{font-size:30px;letter-spacing:.18em;font-variant-numeric:tabular-nums}
 /* Arabic: its own font, no Latin tight tracking */
 /* second headline line: the same amber as "Get file", fading to light gold */
 @property --hl1{syntax:"<color>";inherits:true;initial-value:#F2A33A}
@@ -117,12 +121,22 @@ footer{padding:18px 0;font-size:13px;color:var(--mute)}
 </head>
 <body>
 <div class="amb" aria-hidden="true"><img id="ambimg" alt=""></div>
-<header><span class="brand" data-t="brand">Haseed</span><button class="lang" id="lang" type="button" lang="ar">العربية</button></header>
+<header><span class="brand" data-t="brand">Haseed</span><span class="tools"><button class="lang" id="phone" type="button" data-t="phoneBtn" hidden>Use on phone</button><button class="lang" id="lang" type="button" lang="ar">العربية</button></span></header>
+<div class="phonebox glass" id="phonebox" hidden role="dialog" aria-label="Phone">
+  <span data-t="phoneOpen">On your phone, on the same Wi-Fi, open:</span><b id="purl"></b>
+  <span data-t="phonePin">Then enter this PIN:</span><b class="pin" id="ppin"></b>
+  <span data-t="phoneNote">Phone mode stays on until Haseed is restarted.</span>
+</div>
 
 <main>
   <section>
     <h1><span data-t="h1">Paste a link.</span><br><span class="hl" id="hl">Get the file.</span></h1>
     <p class="lede" data-t="lede">Works with YouTube, Instagram, TikTok, X, Facebook and over a thousand other sites. Files save to Desktop/Haseed.</p>
+    <form id="pinf" class="glass" hidden>
+      <label for="pin" hidden data-t="pinLabel">PIN</label>
+      <input id="pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" required data-ph="pinPh" placeholder="PIN">
+      <button class="btn btn-main" data-t="pinGo">Unlock</button>
+    </form>
     <form id="f" class="glass">
       <label for="url" hidden data-t="urlLabel">Video link</label>
       <input id="url" type="url" placeholder="https://" required autocomplete="off" autofocus dir="ltr">
@@ -172,6 +186,9 @@ const TEXT = {
     big: 'Sizes above 1080p are converted so QuickTime can play them. This takes a few extra minutes.',
     starting: 'Starting…', failed: 'The download stopped. Try again.', untitled: 'Untitled', video: 'Video',
     min: n => `${n} min left`, sec: n => `${n} s left`, quality: 'Quality',
+    phoneBtn: 'Use on phone', phoneOpen: 'On your phone, on the same Wi-Fi, open:', phonePin: 'Then enter this PIN:',
+    phoneNote: 'Phone mode stays on until Haseed is restarted.', pinLabel: 'PIN', pinPh: 'PIN from your computer', pinGo: 'Unlock',
+    pinAsk: 'Enter the PIN shown on your computer (Use on phone).', savePhone: 'Save to phone',
     labels: {},
   },
   ar: {
@@ -186,12 +203,17 @@ const TEXT = {
     big: 'المقاسات الأعلى من 1080p تُحوَّل ليعمل الملف على QuickTime، وهذا يستغرق بضع دقائق إضافية.',
     starting: 'جارٍ البدء…', failed: 'توقف التحميل. حاول مرة أخرى.', untitled: 'بلا عنوان', video: 'فيديو',
     min: n => `متبقٍ ${n} د`, sec: n => `متبقٍ ${n} ث`, quality: 'الجودة',
+    phoneBtn: 'على الجوال', phoneOpen: 'على جوالك، وعلى نفس شبكة الواي فاي، افتح:', phonePin: 'ثم أدخل هذا الرمز:',
+    phoneNote: 'يبقى وضع الجوال مفعّلًا حتى يُعاد تشغيل حصيد.', pinLabel: 'الرمز', pinPh: 'الرمز من جهاز الكمبيوتر', pinGo: 'فتح',
+    pinAsk: 'أدخل الرمز الظاهر على جهاز الكمبيوتر (زر «على الجوال»).', savePhone: 'حفظ على الجوال',
     // the server reports its steps in English; show them in Arabic
     labels: {
       'Starting': 'جارٍ البدء', 'Downloading video': 'تحميل الفيديو', 'Downloading audio': 'تحميل الصوت',
       'Downloading': 'جارٍ التحميل', 'Joining video and audio': 'دمج الفيديو والصوت', 'Making the MP3': 'إنشاء ملف MP3',
       'Converting for QuickTime': 'التحويل ليعمل على QuickTime', 'Saved': 'تم الحفظ',
       'That file is no longer in the Haseed folder': 'لم يعد الملف في مجلد Haseed',
+      'Wrong PIN': 'الرمز غير صحيح', 'Too many wrong tries. Wait 10 minutes.': 'محاولات خاطئة كثيرة. انتظر 10 دقائق.',
+      'Enter the PIN shown on your computer': 'أدخل الرمز الظاهر على جهاز الكمبيوتر',
     },
   },
 };
@@ -201,11 +223,14 @@ if (!TEXT[lang]) lang = (navigator.language || '').startsWith('ar') ? 'ar' : 'en
 const t = key => TEXT[lang][key];
 const tr = s => TEXT[lang].labels[s] || s;
 let step = 'idle';
+let isLocal = true;
 function setStep(s) { step = s; $('hl').textContent = t('steps')[s]; }
 function applyLang() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-t]').forEach(el => { el.innerHTML = t(el.dataset.t); });
+  document.querySelectorAll('[data-ph]').forEach(el => { el.placeholder = t(el.dataset.ph); });
+  if (!isLocal) $('reveal').textContent = t('savePhone');
   $('opts').setAttribute('aria-label', t('quality'));
   $('lang').textContent = lang === 'ar' ? 'English' : 'العربية';
   $('lang').lang = lang === 'ar' ? 'en' : 'ar';
@@ -338,9 +363,38 @@ $('dl').onclick = async () => {
 };
 
 $('reveal').onclick = async () => {
+  // on a phone: hand the file to the browser, which saves it to the phone
+  if (!isLocal) { location.href = '/api/file?name=' + encodeURIComponent(savedName); return; }
   const r = await call('/api/reveal?name=' + encodeURIComponent(savedName));
   if (!r.ok) msg(tr((await r.json()).error), true);
 };
+
+function showPhone(p) {
+  $('purl').textContent = p.url; $('ppin').textContent = p.pin; $('phonebox').hidden = false;
+}
+$('phone').onclick = async () => {
+  if (!$('phonebox').hidden) { $('phonebox').hidden = true; return; }
+  const r = await call('/api/phone'); const p = await r.json();
+  if (!r.ok) return msg(p.error, true);
+  showPhone(p);
+};
+
+$('pinf').onsubmit = async e => {
+  e.preventDefault();
+  const r = await call('/api/login?pin=' + encodeURIComponent($('pin').value.trim()));
+  if (!r.ok) { msg(tr((await r.json()).error), true); $('pin').select(); return; }
+  $('pinf').hidden = true; $('f').hidden = false; msg(''); $('url').focus();
+};
+
+(async () => {
+  try {
+    const w = await (await fetch('/api/whoami')).json();
+    isLocal = w.local;
+    $('phone').hidden = !w.local;
+    if (!w.authed) { $('f').hidden = true; $('pinf').hidden = false; msg(t('pinAsk')); $('pin').focus(); }
+  } catch {}
+  applyLang();
+})();
 applyLang();
 </script>
 </body>

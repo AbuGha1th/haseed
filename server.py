@@ -3,6 +3,10 @@
 Start it with start.command (Mac) or start.bat (Windows).
 """
 import json
+import re
+import secrets
+import socket
+import time
 import os
 import shutil
 import subprocess
@@ -39,7 +43,7 @@ def pick_format(kind):
         return "ba/b"
     if kind.isdigit():
         h = int(kind)
-        return f"bv*[height<={h}]+ba/b[height<={h}]"
+        return f"bv*[height<={h}]+ba/b[height<={h}]/wv*+ba/w"  # none that small: take the smallest there is
     return "bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b"  # unknown sizes: stay at 1080p or below
 
 
@@ -200,14 +204,54 @@ def run_job(job, url, kind):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
+# Phone mode: off until switched on from the computer; a second listener on the
+# Wi-Fi address, guarded by a PIN. Everything resets when Haseed restarts.
+PHONE = {"on": False, "pin": None, "tokens": set(), "fails": 0, "locked_until": 0, "url": None}
+
+
+def lan_ip():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.connect(("192.0.2.1", 9))  # no packet is sent; this just picks the Wi-Fi interface
+        return s.getsockname()[0]
+
+
+def phone_on():
+    if PHONE["on"]:
+        return
+    ip = lan_ip()
+    srv = ThreadingHTTPServer((ip, PORT), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    PHONE.update(on=True, pin=f"{secrets.randbelow(10**6):06d}", url=f"http://{ip}:{PORT}")
+
+
+def check_pin(pin):
+    """Returns a login token, or None. Five wrong tries lock phones out for 10 minutes."""
+    if time.time() < PHONE["locked_until"]:
+        return None
+    if PHONE["pin"] and secrets.compare_digest(pin, PHONE["pin"]):
+        PHONE["fails"] = 0
+        token = secrets.token_urlsafe(24)
+        PHONE["tokens"].add(token)
+        return token
+    PHONE["fails"] += 1
+    if PHONE["fails"] >= 5:
+        PHONE.update(fails=0, locked_until=time.time() + 600)
+    return None
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
-    def end_headers(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
-        super().end_headers()
+    def is_local(self):
+        return self.client_address[0] in ("127.0.0.1", "::1")
+
+    def phone_token(self):
+        for part in self.headers.get("Cookie", "").split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == "haseed" and v in PHONE["tokens"]:
+                return v
+        return None
 
     def _json(self, code, data):
         body = json.dumps(data).encode()
@@ -220,6 +264,49 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
+        local = self.is_local()
+        # Phones may load the page and log in; everything else needs the PIN first
+        if not local and u.path not in ("/", "/index.html", "/api/whoami", "/api/login") and not self.phone_token():
+            return self._json(401, {"error": "Enter the PIN shown on your computer"})
+        if u.path == "/api/whoami":
+            info = {"local": local, "authed": local or bool(self.phone_token())}
+            if local:
+                info["phone"] = {k: PHONE[k] for k in ("on", "pin", "url")}
+            return self._json(200, info)
+        if u.path == "/api/login":
+            if local:
+                return self._json(200, {"ok": True})
+            token = check_pin(q.get("pin", ""))
+            if not token:
+                locked = time.time() < PHONE["locked_until"]
+                return self._json(403, {"error": "Too many wrong tries. Wait 10 minutes." if locked else "Wrong PIN"})
+            body = json.dumps({"ok": True}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Set-Cookie", f"haseed={token}; Path=/; HttpOnly; SameSite=Strict")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            return self.wfile.write(body)
+        if u.path == "/api/phone":
+            if not local:
+                return self._json(403, {"error": "Only from the computer"})
+            try:
+                phone_on()
+            except OSError as e:
+                return self._json(500, {"error": f"Couldn't open phone mode: {e}"})
+            return self._json(200, {k: PHONE[k] for k in ("on", "pin", "url")})
+        if u.path == "/api/file":
+            path = os.path.join(OUT, os.path.basename(q.get("name", "")))
+            if not os.path.isfile(path):
+                return self._json(404, {"error": "That file is no longer in the Haseed folder"})
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4" if path.endswith(".mp4") else "application/octet-stream")
+            self.send_header("Content-Length", str(os.path.getsize(path)))
+            self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{quote(os.path.basename(path))}")
+            self.end_headers()
+            with open(path, "rb") as f:
+                shutil.copyfileobj(f, self.wfile)
+            return
         if u.path in ("/", "/index.html"):
             with open(os.path.join(ROOT, "index.html"), "rb") as f:
                 body = f.read()
@@ -257,6 +344,8 @@ class Handler(BaseHTTPRequestHandler):
                              daemon=True).start()
             self._json(200, {"id": job_id})
         elif u.path == "/api/reveal":
+            if not local:
+                return self._json(403, {"error": "Only from the computer"})
             path = os.path.join(OUT, os.path.basename(q.get("name", "")))
             if not os.path.isfile(path):
                 return self._json(404, {"error": "That file is no longer in the Haseed folder"})
@@ -275,7 +364,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def clean(e):
-    msg = str(e).replace("ERROR: ", "")
+    msg = re.sub(r"\x1b\[[0-9;]*m", "", str(e)).replace("ERROR: ", "")  # drop terminal colour codes
     return msg.split("; please report")[0][:300]
 
 

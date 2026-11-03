@@ -14,6 +14,7 @@ Paste a link, get the file. Haseed is a small page that runs on your own compute
 - Live progress while it downloads
 - Files play in QuickTime and on iPhone: anything else is converted to H.264
 - Saved to a **Haseed** folder on your Desktop
+- Use it from your iPhone or Android phone, no app needed
 - English and Arabic interface (switch in the top corner)
 - Nothing is uploaded anywhere, and there are no ads or accounts
 
@@ -29,8 +30,37 @@ You need [Python 3](https://www.python.org/downloads/). On Windows, tick **Add p
 
 The first start takes a minute while it installs what it needs (yt-dlp, ffmpeg and Deno) into a `.venv` folder inside the project. Each later start checks for a newer yt-dlp, because sites change often and older versions stop working.
 
+## Use it from your phone (iPhone or Android)
+
+No app needed. Haseed keeps running on your computer, and your phone uses it over Wi-Fi.
+
+1. On the computer, click **Use on phone** (top corner). It shows an address like `http://192.168.1.20:8788` and a 6-digit PIN.
+2. On the phone, connected to the **same Wi-Fi**, open that address in Safari or Chrome and enter the PIN.
+3. Paste a link and tap **Get file**. When it's done, tap **Save to phone**.
+   - **iPhone:** the video goes to the Files app (Downloads). To put it in Photos, open it in Files → Share → **Save Video**.
+   - **Android:** it goes to your Downloads.
+
+Phone mode is off until you switch it on, and turns off when Haseed restarts. After 5 wrong PINs, phones are locked out for 10 minutes. The connection between phone and computer isn't encrypted, so use it on your own Wi-Fi, not public Wi-Fi.
+
+## Android without a computer (Termux)
+
+Haseed can also run on the phone itself, using [Termux](https://f-droid.org/packages/com.termux/) (install it from F-Droid; the Play Store version is outdated).
+
+1. In Termux, run these once:
+   ```
+   pkg update && pkg install -y python ffmpeg git nodejs
+   termux-setup-storage
+   git clone https://github.com/AbuGha1th/haseed
+   cd haseed && pip install -U yt-dlp
+   ```
+2. To start Haseed, run:
+   ```
+   cd ~/haseed && HASEED_NO_BROWSER=1 python server.py
+   ```
+3. Open **http://localhost:8788** in Chrome on the phone. Files are saved in Termux's home folder under `Desktop/Haseed` (or `~/Haseed`); copy them to your phone storage with `cp ~/Haseed/* ~/storage/downloads/`.
+
 ## Good to know
 
-- Haseed only listens on your own computer (`127.0.0.1`), so nobody else can reach it.
+- Haseed only listens on your own computer (`127.0.0.1`), so nobody else can reach it, unless you switch on phone mode, which needs the PIN.
 - Download only what you have the right to keep. Some sites' terms forbid downloading, and you are responsible for how you use this.
 - Haseed is not affiliated with yt-dlp. Report download problems for a specific site to Haseed first, not to yt-dlp.
