@@ -1,0 +1,81 @@
+plugins {
+    id "com.android.application"
+    id "com.chaquo.python"
+}
+
+android {
+    namespace "io.github.abugha1th.haseed"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "io.github.abugha1th.haseed"
+        minSdk 26
+        targetSdk 35
+        versionCode Integer.parseInt(System.getenv("HASEED_VERSION_CODE") ?: "1")
+        versionName System.getenv("HASEED_VERSION") ?: "dev"
+        // phone CPUs both Python and the bundled ffmpeg support
+        // 64-bit phones only: Python 3.12 has no 32-bit Android build
+        ndk { abiFilters "arm64-v8a", "x86_64" }
+    }
+
+    // Release builds are signed with the key in HASEED_KEYSTORE (set in GitHub Actions);
+    // without it they fall back to the debug key so local builds still work.
+    signingConfigs {
+        release {
+            def ks = System.getenv("HASEED_KEYSTORE")
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv("HASEED_KEYSTORE_PASSWORD")
+                keyAlias "haseed"
+                keyPassword System.getenv("HASEED_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv("HASEED_KEYSTORE") ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    // ffmpeg ships as lib*.so programs; they must be unpacked on the phone to be runnable
+    packagingOptions { jniLibs { useLegacyPackaging true } }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// Haseed's own server and page, copied in from the repo root as a Python package
+def haseedPy = layout.buildDirectory.dir("haseed-py")
+tasks.register("copyHaseed", Copy) {
+    from("../../server.py", "../../index.html")
+    into(haseedPy.map { it.dir("haseed") })
+    doLast { haseedPy.get().file("haseed/__init__.py").asFile.text = "" }
+}
+preBuild.dependsOn("copyHaseed")
+tasks.matching { it.name.endsWith("PythonSources") }.configureEach { dependsOn("copyHaseed") }
+
+chaquopy {
+    defaultConfig {
+        version "3.12"
+        pip {
+            install "yt-dlp"
+            install "yt-dlp-ejs"  // solves YouTube's JavaScript challenges with qjs
+            install "certifi"
+        }
+        // unpack to real files so server.py can read index.html next to it
+        extractPackages "haseed"
+    }
+    sourceSets {
+        main { srcDir haseedPy }
+    }
+}
+
+dependencies {
+    // ffmpeg for Android, plus the shared libraries it links against (unpacked from
+    // the library package) and qjs, the QuickJS runtime yt-dlp uses for YouTube
+    implementation "io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1"
+    implementation "io.github.junkfood02.youtubedl-android:library:0.18.1"
+}

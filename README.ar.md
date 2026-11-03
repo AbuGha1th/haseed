@@ -20,11 +20,24 @@
 - واجهة بالعربية والإنجليزية (التبديل من أعلى الصفحة)
 - لا يُرفَع شيء إلى أي مكان، ولا إعلانات ولا حسابات
 
+## ملفات الإصدار
+
+حمّلها من [آخر إصدار](https://github.com/AbuGha1th/haseed/releases/latest).
+
+| الملف | الوصف |
+|---|---|
+| [Haseed-macOS.zip](https://github.com/AbuGha1th/haseed/releases/latest/download/Haseed-macOS.zip) | ماك (إنتل وآبل سيليكون). فُكّ الضغط ثم انقر مرتين على `start.command`. يحتاج إلى بايثون 3 |
+| [Haseed-Windows.zip](https://github.com/AbuGha1th/haseed/releases/latest/download/Haseed-Windows.zip) | ويندوز 10 و11. فُكّ الضغط ثم انقر مرتين على `start.bat`. يحتاج إلى بايثون 3 |
+| [Haseed-Android.apk](https://github.com/AbuGha1th/haseed/releases/latest/download/Haseed-Android.apk) | أندرويد 8 فما فوق، الأجهزة 64-بت. كل شيء بداخله، دون حاجة إلى كمبيوتر |
+| آيفون | لا يوجد تطبيق: استخدم حصيد الذي على الكمبيوتر من سفاري ([الطريقة](#الاستخدام-من-الجوال-آيفون-أو-أندرويد)) |
+
+**أندرويد:** حمّل ملف ‎.apk على الجوال وافتحه؛ سيطلب أندرويد مرة واحدة السماح بتثبيت التطبيقات من المتصفح أو تطبيق الملفات. التطبيق ليس في متجر Play لأن جوجل لا تسمح بتطبيقات التحميل من يوتيوب. ومن أي تطبيق آخر اضغط **مشاركة ← Haseed** على المقطع ليفتح مباشرة في حصيد. تُحفَظ الملفات في **التنزيلات / Haseed** وتظهر في المعرض.
+
 ## طريقة التشغيل
 
 تحتاج إلى [بايثون 3](https://www.python.org/downloads/). على ويندوز، فعّل خيار **Add python.exe to PATH** أثناء التثبيت.
 
-1. حمّل هذا المستودع (الزر الأخضر **Code** ثم **Download ZIP**) وفُكّ الضغط.
+1. حمّل **Haseed-macOS.zip** أو **Haseed-Windows.zip** من الجدول أعلاه وفُكّ الضغط.
 2. شغّله:
    - **ماك:** انقر مرتين على `start.command`. في المرة الأولى انقر بالزر الأيمن ثم **Open** لتجاوز تنبيه الأمان.
    - **ويندوز:** انقر مرتين على `start.bat`.
@@ -46,7 +59,7 @@
 
 ## أندرويد دون كمبيوتر (Termux)
 
-يمكن تشغيل حصيد على الجوال نفسه عبر تطبيق [Termux](https://f-droid.org/packages/com.termux/) (ثبّته من F-Droid، فنسخة متجر Play قديمة).
+الأسهل هو تطبيق **Haseed-Android.apk** أعلاه. وإن لم ترغب في تثبيت تطبيق، يمكن تشغيل حصيد على الجوال نفسه عبر تطبيق [Termux](https://f-droid.org/packages/com.termux/) (ثبّته من F-Droid، فنسخة متجر Play قديمة).
 
 <div dir="ltr">
 

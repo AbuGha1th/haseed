@@ -32,7 +32,8 @@ import yt_dlp  # noqa: E402
 IS_MAC = sys.platform == "darwin"
 IS_WIN = sys.platform == "win32"
 DESKTOP = os.path.expanduser("~/Desktop")
-OUT = os.path.join(DESKTOP if os.path.isdir(DESKTOP) else os.path.expanduser("~"), "Haseed")
+OUT = os.environ.get("HASEED_OUT") or os.path.join(DESKTOP if os.path.isdir(DESKTOP) else os.path.expanduser("~"), "Haseed")
+IS_ANDROID_APP = bool(os.environ.get("HASEED_ANDROID"))
 PORT = int(os.environ.get("PORT", 8788))
 HAS_FFMPEG = shutil.which("ffmpeg") is not None
 JS = {"deno": {}, "node": {}}
@@ -269,7 +270,7 @@ class Handler(BaseHTTPRequestHandler):
         if not local and u.path not in ("/", "/index.html", "/api/whoami", "/api/login") and not self.phone_token():
             return self._json(401, {"error": "Enter the PIN shown on your computer"})
         if u.path == "/api/whoami":
-            info = {"local": local, "authed": local or bool(self.phone_token())}
+            info = {"local": local, "authed": local or bool(self.phone_token()), "app": IS_ANDROID_APP}
             if local:
                 info["phone"] = {k: PHONE[k] for k in ("on", "pin", "url")}
             return self._json(200, info)
@@ -368,7 +369,7 @@ def clean(e):
     return msg.split("; please report")[0][:300]
 
 
-if __name__ == "__main__":
+def main():
     try:
         srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     except OSError:
@@ -378,3 +379,7 @@ if __name__ == "__main__":
         threading.Timer(1, webbrowser.open, [f"http://localhost:{PORT}"]).start()
     print(f"Haseed running on http://localhost:{PORT}  (ffmpeg: {'yes' if HAS_FFMPEG else 'no'})", flush=True)
     srv.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

@@ -18,11 +18,24 @@ Paste a link, get the file. Haseed is a small page that runs on your own compute
 - English and Arabic interface (switch in the top corner)
 - Nothing is uploaded anywhere, and there are no ads or accounts
 
+## Release files
+
+Download from the [latest release](https://github.com/AbuGha1th/haseed/releases/latest).
+
+| File | Description |
+|---|---|
+| [Haseed-macOS.zip](https://github.com/AbuGha1th/haseed/releases/latest/download/Haseed-macOS.zip) | macOS (Intel and Apple Silicon). Unzip, then double-click `start.command`. Needs Python 3 |
+| [Haseed-Windows.zip](https://github.com/AbuGha1th/haseed/releases/latest/download/Haseed-Windows.zip) | Windows 10 and 11. Unzip, then double-click `start.bat`. Needs Python 3 |
+| [Haseed-Android.apk](https://github.com/AbuGha1th/haseed/releases/latest/download/Haseed-Android.apk) | Android 8 or newer, 64-bit phones. Everything is inside, no computer needed |
+| iPhone | No app: use Haseed on your computer from Safari ([how](#use-it-from-your-phone-iphone-or-android)) |
+
+**Android:** download the .apk on your phone and open it; Android asks once to allow installing apps from your browser or Files app. It isn't on the Play Store, because Google doesn't allow apps that download from YouTube. In other apps, tap **Share → Haseed** on a video to open it straight in Haseed. Files save to **Download/Haseed** and show up in your gallery.
+
 ## Run it
 
 You need [Python 3](https://www.python.org/downloads/). On Windows, tick **Add python.exe to PATH** while installing.
 
-1. Download this repo (green **Code** button → **Download ZIP**) and unzip it.
+1. Download **Haseed-macOS.zip** or **Haseed-Windows.zip** from the table above and unzip it.
 2. Start it:
    - **Mac:** double-click `start.command`. The first time, right-click it → **Open** to get past the security prompt.
    - **Windows:** double-click `start.bat`.
@@ -44,7 +57,7 @@ Phone mode is off until you switch it on, and turns off when Haseed restarts. Af
 
 ## Android without a computer (Termux)
 
-Haseed can also run on the phone itself, using [Termux](https://f-droid.org/packages/com.termux/) (install it from F-Droid; the Play Store version is outdated).
+The easiest way is the **Haseed-Android.apk** above. If you'd rather not install an app, Haseed can also run on the phone using [Termux](https://f-droid.org/packages/com.termux/) (install it from F-Droid; the Play Store version is outdated).
 
 1. In Termux, run these once:
    ```

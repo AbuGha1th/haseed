@@ -1,0 +1,66 @@
+# Builds the release files and publishes them as a new release.
+# Run it from the Actions tab (Release → Run workflow) and type the version, e.g. 1.1.0.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number, e.g. 1.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"  # Chaquopy builds with the same Python the app ships
+
+      - name: Version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Version must look like 1.2.3"; exit 1; }
+          echo "HASEED_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "HASEED_VERSION_CODE=$(( ${{ github.run_number }} + 1 ))" >> "$GITHUB_ENV"  # 1 was the first, hand-built release
+
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.HASEED_KEYSTORE_B64 }}
+        run: |
+          # Without the key, phones could not update an installed Haseed, so refuse to publish
+          test -n "$KEYSTORE_B64" || { echo "::error::Add the HASEED_KEYSTORE_B64 and HASEED_KEYSTORE_PASSWORD secrets"; exit 1; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/haseed.keystore"
+          echo "HASEED_KEYSTORE=$RUNNER_TEMP/haseed.keystore" >> "$GITHUB_ENV"
+
+      - name: Android app
+        working-directory: android
+        env:
+          HASEED_KEYSTORE_PASSWORD: ${{ secrets.HASEED_KEYSTORE_PASSWORD }}
+        run: ./gradlew assembleRelease --console=plain
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk dist/Haseed-Android.apk
+          files="server.py index.html requirements.txt README.md README.ar.md LICENSE"
+          mkdir -p pkg/Haseed && cp $files pkg/Haseed/
+          cp start.command pkg/Haseed/ && (cd pkg && zip -qr ../dist/Haseed-macOS.zip Haseed)
+          rm pkg/Haseed/start.command && cp start.bat pkg/Haseed/ && (cd pkg && zip -qr ../dist/Haseed-Windows.zip Haseed)
+          (cd dist && sha256sum * > SHA2-256SUMS)
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "v$HASEED_VERSION" dist/* --target "$GITHUB_SHA" --title "Haseed $HASEED_VERSION" --notes-file .github/release-notes.md

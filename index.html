@@ -179,7 +179,7 @@ const TEXT = {
     steps: { idle: 'Get the file.', pick: 'Pick a quality.', getting: 'Getting it…', saved: 'Saved to Desktop.' },
     lede: 'Works with YouTube, Instagram, TikTok, X, Facebook and over a thousand other sites. Files save to Desktop/Haseed.',
     urlLabel: 'Video link', paste: 'Paste', go: 'Look up', ph: 'Your file will appear here', dl: 'Get file',
-    reveal: isWin ? 'Show in Explorer' : 'Show in Finder', tray: 'Desktop/Haseed',
+    reveal: isWin ? 'Show in Explorer' : 'Show in Finder', tray: 'Desktop/Haseed', trayApp: 'Download/Haseed',
     foot: 'Only download what you have the right to keep.',
     looking: 'Looking up the link…', unreadable: "Couldn't read that link. Check it opens in your browser.",
     stopped: 'Haseed stopped running. Open start.command (Mac) or start.bat (Windows) again, then retry.',
@@ -196,7 +196,7 @@ const TEXT = {
     steps: { idle: 'واحصل على الملف.', pick: 'اختر الجودة.', getting: 'جارٍ التحميل…', saved: 'تم الحفظ.' },
     lede: 'يعمل مع يوتيوب وإنستغرام وتيك توك وإكس وفيسبوك وأكثر من ألف موقع آخر. تُحفَظ الملفات في مجلد Haseed على سطح المكتب.',
     urlLabel: 'رابط المقطع', paste: 'لصق', go: 'ابحث', ph: 'سيظهر ملفك هنا', dl: 'احصل على الملف',
-    reveal: isWin ? 'إظهار في المستكشف' : 'إظهار في Finder', tray: 'سطح المكتب / Haseed',
+    reveal: isWin ? 'إظهار في المستكشف' : 'إظهار في Finder', tray: 'سطح المكتب / Haseed', trayApp: 'التنزيلات / Haseed',
     foot: 'لا تحمّل إلا ما يحق لك الاحتفاظ به.',
     looking: 'جارٍ البحث عن الرابط…', unreadable: 'تعذّرت قراءة الرابط. تأكّد أنه يفتح في المتصفح.',
     stopped: 'توقف حصيد عن العمل. افتح start.command (ماك) أو start.bat (ويندوز) مرة أخرى ثم أعد المحاولة.',
@@ -223,7 +223,7 @@ if (!TEXT[lang]) lang = (navigator.language || '').startsWith('ar') ? 'ar' : 'en
 const t = key => TEXT[lang][key];
 const tr = s => TEXT[lang].labels[s] || s;
 let step = 'idle';
-let isLocal = true;
+let isLocal = true, inApp = false;
 function setStep(s) { step = s; $('hl').textContent = t('steps')[s]; }
 function applyLang() {
   document.documentElement.lang = lang;
@@ -231,6 +231,8 @@ function applyLang() {
   document.querySelectorAll('[data-t]').forEach(el => { el.innerHTML = t(el.dataset.t); });
   document.querySelectorAll('[data-ph]').forEach(el => { el.placeholder = t(el.dataset.ph); });
   if (!isLocal) $('reveal').textContent = t('savePhone');
+  if (inApp) document.querySelector('[data-t=tray]').textContent = t('trayApp');
+  if (inApp) { const l = document.querySelector('[data-t=lede]'); l.textContent = l.textContent.replace('Desktop/Haseed', 'Download/Haseed').replace('Haseed على سطح المكتب', 'Haseed في التنزيلات'); }
   $('opts').setAttribute('aria-label', t('quality'));
   $('lang').textContent = lang === 'ar' ? 'English' : 'العربية';
   $('lang').lang = lang === 'ar' ? 'en' : 'ar';
@@ -355,6 +357,7 @@ $('dl').onclick = async () => {
         $('dl').hidden = true; $('reveal').hidden = false;
         $('saved').textContent = j.saved;
         document.body.classList.add('landed'); setStep('saved');
+        if (inApp) $('reveal').hidden = true;  // the Android app saves to Download/Haseed; there's no Finder
         break;
       }
     }
@@ -390,10 +393,14 @@ $('pinf').onsubmit = async e => {
   try {
     const w = await (await fetch('/api/whoami')).json();
     isLocal = w.local;
-    $('phone').hidden = !w.local;
+    inApp = !!w.app;
+    $('phone').hidden = !w.local || inApp;
     if (!w.authed) { $('f').hidden = true; $('pinf').hidden = false; msg(t('pinAsk')); $('pin').focus(); }
   } catch {}
   applyLang();
+  // a link handed over in the address (e.g. shared from the YouTube app): look it up straight away
+  const shared = new URLSearchParams(location.search).get('url');
+  if (shared && !$('f').hidden) { $('url').value = shared; $('f').requestSubmit(); }
 })();
 applyLang();
 </script>
