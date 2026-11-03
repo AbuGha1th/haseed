@@ -8,6 +8,7 @@ Paste a link, get the file. Haseed is a small page that runs on your own compute
 - Live progress while it downloads
 - Files play in QuickTime and on iPhone: anything else is converted to H.264
 - Saved to a **Haseed** folder on your Desktop
+- English and Arabic interface (switch in the top corner)
 - Nothing is uploaded anywhere, and there are no ads or accounts
 
 ## Run it

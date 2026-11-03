@@ -6,7 +6,7 @@
 <title>Haseed</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --desk:#0A0E17; --ink:#EEF2F8; --mute:#98A2B5; --line:rgba(255,255,255,.16);
@@ -31,7 +31,15 @@ button,input{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--amber);outline-offset:2px}
 
 header,main,footer{width:100%;max-width:1080px;margin:0 auto}
-header{padding:22px 0;font:800 20px "Bricolage Grotesque";letter-spacing:-.01em}
+header{padding:22px 0;display:flex;justify-content:space-between;align-items:center}
+.brand{font:800 20px "Bricolage Grotesque";letter-spacing:-.01em}
+.lang{border:1px solid var(--line);border-radius:99px;padding:5px 14px;font-size:14px;cursor:pointer;background:rgba(255,255,255,.06);color:var(--mute)}
+.lang:hover{color:var(--ink)}
+/* Arabic: its own font, no Latin tight tracking */
+html[lang=ar] body{font-family:"IBM Plex Sans Arabic",system-ui,sans-serif}
+html[lang=ar] .brand{font:700 22px "IBM Plex Sans Arabic"}
+html[lang=ar] h1{font:700 clamp(40px,6.2vw,84px)/1.15 "IBM Plex Sans Arabic";letter-spacing:0}
+html[lang=ar] .lang{font-family:"Inter Tight",system-ui,sans-serif}
 main{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:56px;align-items:center;min-height:0}
 
 h1{font:800 clamp(44px,7vw,96px)/.92 "Bricolage Grotesque";letter-spacing:-.035em}
@@ -104,17 +112,17 @@ footer{padding:18px 0;font-size:13px;color:var(--mute)}
 </head>
 <body>
 <div class="amb" aria-hidden="true"><img id="ambimg" alt=""></div>
-<header>Haseed</header>
+<header><span class="brand" data-t="brand">Haseed</span><button class="lang" id="lang" type="button" lang="ar">العربية</button></header>
 
 <main>
   <section>
-    <h1>Paste a link.<br>Get the file.</h1>
-    <p class="lede">Works with YouTube, Instagram, TikTok, X, Facebook and over a thousand other sites. Files save to Desktop/Haseed.</p>
+    <h1 data-t="h1">Paste a link.<br>Get the file.</h1>
+    <p class="lede" data-t="lede">Works with YouTube, Instagram, TikTok, X, Facebook and over a thousand other sites. Files save to Desktop/Haseed.</p>
     <form id="f" class="glass">
-      <label for="url" hidden>Video link</label>
-      <input id="url" type="url" placeholder="https://" required autocomplete="off" autofocus>
-      <button type="button" class="btn btn-quiet" id="paste">Paste</button>
-      <button class="btn btn-main" id="go">Look up</button>
+      <label for="url" hidden data-t="urlLabel">Video link</label>
+      <input id="url" type="url" placeholder="https://" required autocomplete="off" autofocus dir="ltr">
+      <button type="button" class="btn btn-quiet" id="paste" data-t="paste">Paste</button>
+      <button class="btn btn-main" id="go" data-t="go">Look up</button>
     </form>
     <p class="msg" id="msg" role="status"></p>
   </section>
@@ -122,7 +130,7 @@ footer{padding:18px 0;font-size:13px;color:var(--mute)}
   <section id="side">
     <div class="file glass empty" id="file">
       <div class="fill" id="fill"></div>
-      <div class="thumb" id="ph">Your file will appear here</div>
+      <div class="thumb" id="ph" data-t="ph">Your file will appear here</div>
       <img class="thumb" id="th" alt="" hidden>
       <div id="info" hidden>
         <p class="name" id="tt" dir="auto"></p>
@@ -130,28 +138,82 @@ footer{padding:18px 0;font-size:13px;color:var(--mute)}
         <div class="qual" id="opts" role="radiogroup" aria-label="Quality"></div>
         <div class="act">
           <span class="stage" id="stage" aria-live="polite"></span>
-          <button class="btn btn-get" id="dl">Get file</button>
-          <button class="btn btn-main" id="reveal" hidden>Show in Finder</button>
+          <button class="btn btn-get" id="dl" data-t="dl">Get file</button>
+          <button class="btn btn-main" id="reveal" hidden data-t="reveal">Show in Finder</button>
         </div>
         <p class="note" id="note"></p>
       </div>
     </div>
-    <div class="tray"><span>Desktop/Haseed</span><b id="saved" dir="auto"></b></div>
+    <div class="tray"><span data-t="tray">Desktop/Haseed</span><b id="saved" dir="auto"></b></div>
   </section>
 </main>
 
-<footer>Only download what you have the right to keep.</footer>
+<footer data-t="foot">Only download what you have the right to keep.</footer>
 
 <script>
 const $ = id => document.getElementById(id);
+const isWin = navigator.userAgent.includes('Windows');
+const TEXT = {
+  en: {
+    brand: 'Haseed', h1: 'Paste a link.<br>Get the file.',
+    lede: 'Works with YouTube, Instagram, TikTok, X, Facebook and over a thousand other sites. Files save to Desktop/Haseed.',
+    urlLabel: 'Video link', paste: 'Paste', go: 'Look up', ph: 'Your file will appear here', dl: 'Get file',
+    reveal: isWin ? 'Show in Explorer' : 'Show in Finder', tray: 'Desktop/Haseed',
+    foot: 'Only download what you have the right to keep.',
+    looking: 'Looking up the link…', unreadable: "Couldn't read that link. Check it opens in your browser.",
+    stopped: 'Haseed stopped running. Open start.command (Mac) or start.bat (Windows) again, then retry.',
+    big: 'Sizes above 1080p are converted so QuickTime can play them. This takes a few extra minutes.',
+    starting: 'Starting…', failed: 'The download stopped. Try again.', untitled: 'Untitled', video: 'Video',
+    min: n => `${n} min left`, sec: n => `${n} s left`, quality: 'Quality',
+    labels: {},
+  },
+  ar: {
+    brand: 'حصيد', h1: 'ألصق الرابط.<br>واحصل على الملف.',
+    lede: 'يعمل مع يوتيوب وإنستغرام وتيك توك وإكس وفيسبوك وأكثر من ألف موقع آخر. تُحفَظ الملفات في مجلد Haseed على سطح المكتب.',
+    urlLabel: 'رابط المقطع', paste: 'لصق', go: 'ابحث', ph: 'سيظهر ملفك هنا', dl: 'احصل على الملف',
+    reveal: isWin ? 'إظهار في المستكشف' : 'إظهار في Finder', tray: 'سطح المكتب / Haseed',
+    foot: 'لا تحمّل إلا ما يحق لك الاحتفاظ به.',
+    looking: 'جارٍ البحث عن الرابط…', unreadable: 'تعذّرت قراءة الرابط. تأكّد أنه يفتح في المتصفح.',
+    stopped: 'توقف حصيد عن العمل. افتح start.command (ماك) أو start.bat (ويندوز) مرة أخرى ثم أعد المحاولة.',
+    big: 'المقاسات الأعلى من 1080p تُحوَّل ليعمل الملف على QuickTime، وهذا يستغرق بضع دقائق إضافية.',
+    starting: 'جارٍ البدء…', failed: 'توقف التحميل. حاول مرة أخرى.', untitled: 'بلا عنوان', video: 'فيديو',
+    min: n => `متبقٍ ${n} د`, sec: n => `متبقٍ ${n} ث`, quality: 'الجودة',
+    // the server reports its steps in English; show them in Arabic
+    labels: {
+      'Starting': 'جارٍ البدء', 'Downloading video': 'تحميل الفيديو', 'Downloading audio': 'تحميل الصوت',
+      'Downloading': 'جارٍ التحميل', 'Joining video and audio': 'دمج الفيديو والصوت', 'Making the MP3': 'إنشاء ملف MP3',
+      'Converting for QuickTime': 'التحويل ليعمل على QuickTime', 'Saved': 'تم الحفظ',
+      'That file is no longer in the Haseed folder': 'لم يعد الملف في مجلد Haseed',
+    },
+  },
+};
+let lang = 'en';
+try { lang = localStorage.getItem('haseed-lang') || ''; } catch {}
+if (!TEXT[lang]) lang = (navigator.language || '').startsWith('ar') ? 'ar' : 'en';
+const t = key => TEXT[lang][key];
+const tr = s => TEXT[lang].labels[s] || s;
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-t]').forEach(el => { el.innerHTML = t(el.dataset.t); });
+  $('opts').setAttribute('aria-label', t('quality'));
+  $('lang').textContent = lang === 'ar' ? 'English' : 'العربية';
+  $('lang').lang = lang === 'ar' ? 'en' : 'ar';
+  document.title = t('brand');
+}
+$('lang').onclick = () => {
+  lang = lang === 'ar' ? 'en' : 'ar';
+  try { localStorage.setItem('haseed-lang', lang); } catch {}
+  applyLang();
+};
 const msg = (text, err) => { $('msg').textContent = text; $('msg').className = 'msg' + (err ? ' err' : ''); };
 const fmtDur = s => s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : '';
 const fmtSpeed = b => !b ? '' : b > 1048576 ? (b / 1048576).toFixed(1) + ' MB/s' : Math.round(b / 1024) + ' KB/s';
-const fmtEta = s => s == null ? '' : s >= 60 ? `${Math.floor(s / 60)} min left` : `${s} s left`;
+const fmtEta = s => s == null ? '' : s >= 60 ? t('min')(Math.floor(s / 60)) : t('sec')(s);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const call = async path => {
   try { return await fetch(path); }
-  catch { throw new Error('Haseed stopped running. Open start.command (Mac) or start.bat (Windows) again, then retry.'); }
+  catch { throw new Error(t('stopped')); }
 };
 let current = '', savedName = '';
 
@@ -170,7 +232,7 @@ function readyToGet() {
 $('f').onsubmit = async e => {
   e.preventDefault();
   current = $('url').value.trim();
-  $('go').disabled = true; msg('Looking up the link…');
+  $('go').disabled = true; msg(t('looking'));
   try {
     const r = await call('/api/info?url=' + encodeURIComponent(current));
     const d = await r.json();
@@ -179,31 +241,31 @@ $('f').onsubmit = async e => {
     $('th').hidden = !d.thumbnail; $('th').src = d.thumbnail || '';
     $('ambimg').classList.toggle('on', !!d.thumbnail); if (d.thumbnail) $('ambimg').src = d.thumbnail;
     $('info').hidden = false;
-    $('tt').textContent = d.title || 'Untitled';
-    $('mm').textContent = [d.site, d.uploader, fmtDur(d.duration)].filter(Boolean).join(', ');
+    $('tt').textContent = d.title || t('untitled');
+    $('mm').textContent = [d.site, d.uploader, fmtDur(d.duration)].filter(Boolean).join(lang === 'ar' ? '، ' : ', ');
     const qs = d.qualities || [];
     const pick = (qs.find(q => ['1080p', '720p', '480p', '360p'].includes(q.label)) || qs[0] || {}).height;
     const choices = qs.map(q => [String(q.height), q.label]);
-    if (!qs.length) choices.push(['best', 'Video']);
+    if (!qs.length) choices.push(['best', t('video')]);
     choices.push(['audio', 'MP3']);
     $('opts').innerHTML = choices.map(([v, l], i) =>
       `<label><input type="radio" name="k" value="${v}" ${(pick ? v === String(pick) : i === 0) ? 'checked' : ''}>${l}</label>`).join('');
     $('note').textContent = '';
     readyToGet(); msg('');
-  } catch (err) { msg(err.message || "Couldn't read that link. Check it opens in your browser.", true); }
+  } catch (err) { msg(err.message || t('unreadable'), true); }
   $('go').disabled = false;
 };
 
 $('opts').onchange = () => {
   const label = document.querySelector('#opts input:checked').parentElement.textContent;
-  $('note').textContent = ['4K', '1440p'].includes(label) ? 'Sizes above 1080p are converted so QuickTime can play them. This takes a few extra minutes.' : '';
+  $('note').textContent = ['4K', '1440p'].includes(label) ? t('big') : '';
   readyToGet();
 };
 
 $('dl').onclick = async () => {
   const kind = document.querySelector('#opts input:checked').value;
   $('dl').disabled = true; $('go').disabled = true; msg('');
-  $('stage').textContent = 'Starting…';
+  $('stage').textContent = t('starting');
   try {
     const { id } = await (await call(`/api/start?kind=${kind}&url=` + encodeURIComponent(current))).json();
     for (;;) {
@@ -212,27 +274,26 @@ $('dl').onclick = async () => {
       if (j.stage === 'error') throw new Error(j.error);
       if (j.percent != null) setFill(j.percent);
       const pct = j.percent != null ? ` <b>${Math.floor(j.percent)}%</b>` : '';
-      const extra = [fmtSpeed(j.speed), fmtEta(j.eta)].filter(Boolean).join(', ');
-      $('stage').innerHTML = (j.label || 'Working') + pct + (extra ? ` <span>${extra}</span>` : '');
+      const extra = [fmtSpeed(j.speed), fmtEta(j.eta)].filter(Boolean).join(lang === 'ar' ? '، ' : ', ');
+      $('stage').innerHTML = tr(j.label || 'Starting') + pct + (extra ? ` <span>${extra}</span>` : '');
       if (j.stage === 'done') {
         savedName = j.saved;
-        $('stage').textContent = 'Saved';
+        $('stage').textContent = tr('Saved');
         $('dl').hidden = true; $('reveal').hidden = false;
         $('saved').textContent = j.saved;
         document.body.classList.add('landed');
         break;
       }
     }
-  } catch (err) { msg(err.message || 'The download stopped. Try again.', true); readyToGet(); }
+  } catch (err) { msg(err.message || t('failed'), true); readyToGet(); }
   $('dl').disabled = false; $('go').disabled = false;
 };
 
-const isWin = navigator.userAgent.includes('Windows');
-if (isWin) $('reveal').textContent = 'Show in Explorer';
 $('reveal').onclick = async () => {
   const r = await call('/api/reveal?name=' + encodeURIComponent(savedName));
-  if (!r.ok) msg((await r.json()).error, true);
+  if (!r.ok) msg(tr((await r.json()).error), true);
 };
+applyLang();
 </script>
 </body>
 </html>
