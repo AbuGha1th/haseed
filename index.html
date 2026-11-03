@@ -37,7 +37,9 @@ header{padding:22px 0;display:flex;justify-content:space-between;align-items:cen
 .lang:hover{color:var(--ink)}
 /* Arabic: its own font, no Latin tight tracking */
 /* second headline line: the same amber as "Get file", fading to light gold */
-h1 .hl{background:linear-gradient(100deg,#F2A33A 10%,#FFD58A 90%);-webkit-background-clip:text;background-clip:text;color:transparent;
+@property --hl1{syntax:"<color>";inherits:true;initial-value:#F2A33A}
+@property --hl2{syntax:"<color>";inherits:true;initial-value:#FFD58A}
+h1 .hl{background:linear-gradient(100deg,var(--hl1) 10%,var(--hl2) 90%);transition:--hl1 1.2s ease,--hl2 1.2s ease;-webkit-background-clip:text;background-clip:text;color:transparent;
   padding-bottom:.08em}
 html[lang=ar] body{font-family:"IBM Plex Sans Arabic",system-ui,sans-serif}
 html[lang=ar] .brand{font:700 22px "IBM Plex Sans Arabic"}
@@ -231,6 +233,40 @@ $('paste').onclick = async () => {
   catch { $('url').focus(); }
 };
 
+// Headline colour follows the thumbnail: its strongest hue, made bright enough for the dark page
+$('ambimg').onload = () => tintHeadline($('ambimg'));
+$('ambimg').onerror = () => tintHeadline(null);
+function tintHeadline(img) {
+  const hl = $('hl').style;
+  const hue = img ? strongestHue(img) : null;
+  if (hue == null) { hl.removeProperty('--hl1'); hl.removeProperty('--hl2'); return; }  // greyish picture: keep amber
+  hl.setProperty('--hl1', `hsl(${hue} 85% 62%)`);
+  hl.setProperty('--hl2', `hsl(${(hue + 30) % 360} 90% 80%)`);
+}
+function strongestHue(img) {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  let px;
+  try { g.drawImage(img, 0, 0, 32, 32); px = g.getImageData(0, 0, 32, 32).data; } catch { return null; }
+  const buckets = new Array(36).fill(0);  // 10° slices, weighted by how colourful each pixel is
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i] / 255, gr = px[i + 1] / 255, b = px[i + 2] / 255;
+    const max = Math.max(r, gr, b), min = Math.min(r, gr, b), d = max - min;
+    if (d < 0.15 || max < 0.2) continue;  // skip greys and near-black
+    let h = max === r ? ((gr - b) / d) % 6 : max === gr ? (b - r) / d + 2 : (r - gr) / d + 4;
+    h = (h * 60 + 360) % 360;
+    buckets[Math.floor(h / 10)] += d * max;
+  }
+  const best = buckets.indexOf(Math.max(...buckets));
+  return buckets[best] > 8 ? best * 10 + 5 : null;
+}
+// self-check: a solid red picture gives a red hue, a grey one keeps amber
+(() => {
+  const mk = col => { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); x.fillStyle = col; x.fillRect(0, 0, 32, 32); return c; };
+  console.assert(strongestHue(mk('#d00000')) === 5, 'red should map to hue 5');
+  console.assert(strongestHue(mk('#808080')) === null, 'grey should keep amber');
+})();
+
 function setFill(pct) { $('fill').style.height = pct + '%'; }
 
 function readyToGet() {
@@ -249,7 +285,9 @@ $('f').onsubmit = async e => {
     if (!r.ok) throw new Error(d.error);
     $('file').classList.remove('empty'); $('ph').hidden = true;
     $('th').hidden = !d.thumbnail; $('th').src = d.thumbnail || '';
-    $('ambimg').classList.toggle('on', !!d.thumbnail); if (d.thumbnail) $('ambimg').src = d.thumbnail;
+    $('ambimg').classList.toggle('on', !!d.thumbnail);
+    if (d.thumbnail) $('ambimg').src = '/api/thumb?url=' + encodeURIComponent(d.thumbnail);
+    else tintHeadline(null);
     $('info').hidden = false;
     $('tt').textContent = d.title || t('untitled');
     $('mm').textContent = [d.site, d.uploader, fmtDur(d.duration)].filter(Boolean).join(lang === 'ar' ? '، ' : ', ');

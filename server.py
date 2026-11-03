@@ -13,6 +13,7 @@ import uuid
 import webbrowser
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, quote
+from urllib.request import Request, urlopen
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 # Tools installed into the venv (deno) must be on PATH for yt-dlp to find them
@@ -224,6 +225,23 @@ class Handler(BaseHTTPRequestHandler):
                 body = f.read()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif u.path == "/api/thumb":
+            # Serve the thumbnail from our own address so the page may read its colours
+            src = q.get("url", "")
+            if urlparse(src).scheme not in ("http", "https"):
+                return self._json(400, {"error": "bad thumbnail address"})
+            try:
+                with urlopen(Request(src, headers={"User-Agent": "Mozilla/5.0"}), timeout=10) as r:
+                    kind, body = r.headers.get("Content-Type", ""), r.read(5_000_000)
+            except Exception as e:
+                return self._json(502, {"error": clean(e)})
+            if not kind.startswith("image/"):
+                return self._json(415, {"error": "not an image"})
+            self.send_response(200)
+            self.send_header("Content-Type", kind)
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
