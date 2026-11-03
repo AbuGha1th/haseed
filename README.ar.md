@@ -8,11 +8,13 @@
 
 ![حصيد بالعربية بعد حفظ الملف](docs/saved-arabic-v2.png)
 
-<p>
-  <img src="docs/home-v2.png" alt="الشاشة الأولى" width="49%">
-  <img src="docs/downloading-v2.png" alt="أثناء تحميل مقطع" width="49%">
-</p>
-<p><em>الشاشة الأولى، وأثناء التحميل.</em></p>
+<table>
+  <tr><th width="50%">الشاشة الأولى</th><th width="50%">أثناء التحميل</th></tr>
+  <tr>
+    <td width="50%"><img src="docs/home-v2.png" alt="الشاشة الأولى" width="100%"></td>
+    <td width="50%"><img src="docs/downloading-v2.png" alt="أثناء تحميل مقطع" width="100%"></td>
+  </tr>
+</table>
 
 - اختر الجودة: كل المقاسات المتوفرة للمقطع حتى 4K، أو صوت فقط MP3
 - شريط تقدّم مباشر أثناء التحميل
