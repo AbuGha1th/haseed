@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Haseed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --desk:#0A0E17; --ink:#EEF2F8; --mute:#98A2B5; --line:rgba(255,255,255,.16);
+  --glass:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.04));
+  --rim:inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(255,255,255,.05);
+  --amber:#F2A33A; --amber-deep:#F5B65E; --err:#FF8A80;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--desk);color:var(--ink);font:16px/1.5 "Inter Tight",system-ui,sans-serif;
+  display:grid;grid-template-rows:auto 1fr auto;grid-template-columns:minmax(0,1fr);padding:0 24px;
+  color-scheme:dark}
+/* Glass needs colour behind it: soft light by default, the video's thumbnail once one is looked up */
+.amb{position:fixed;inset:-10%;z-index:-1;pointer-events:none;
+  background:radial-gradient(40% 45% at 78% 30%,#2B4C8C 0%,transparent 70%),
+             radial-gradient(35% 40% at 20% 85%,#7A4A12 0%,transparent 70%),var(--desk)}
+.amb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(90px) saturate(1.4);opacity:0;transition:opacity 1.2s ease}
+.amb img.on{opacity:.55}
+.glass{background:var(--glass);border:1px solid var(--line);box-shadow:var(--rim);
+  -webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+
+header,main,footer{width:100%;max-width:1080px;margin:0 auto}
+header{padding:22px 0;font:800 20px "Bricolage Grotesque";letter-spacing:-.01em}
+main{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:56px;align-items:center;min-height:0}
+
+h1{font:800 clamp(44px,7vw,96px)/.92 "Bricolage Grotesque";letter-spacing:-.035em}
+.lede{color:var(--mute);margin:18px 0 28px;max-width:46ch}
+
+form{display:flex;gap:8px;border-radius:16px;padding:6px}
+form:focus-within{border-color:rgba(255,255,255,.45);box-shadow:var(--rim),0 0 0 4px rgba(255,255,255,.08)}
+/* the bar itself shows focus, so the field needs no outline of its own */
+form input:focus-visible{outline:none}
+input{flex:1;min-width:0;border:0;outline:0;background:none;padding:12px 12px;font-size:15px}
+input::placeholder{color:#6F7A8E}
+.btn{border:0;border-radius:10px;padding:0 18px;height:44px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-main{background:rgba(255,255,255,.14);color:var(--ink);box-shadow:var(--rim)}
+.btn-main:hover{background:rgba(255,255,255,.22)}
+.btn-quiet{background:none;color:var(--mute)}
+.btn-quiet:hover{color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:wait}
+.msg{min-height:24px;margin-top:12px;font-size:14px;color:var(--mute)}
+.msg.err{color:var(--err)}
+
+/* The file: one card that fills as it downloads */
+.file{position:relative;border-radius:24px;padding:16px;overflow:hidden;
+  box-shadow:var(--rim),0 40px 80px -40px rgba(0,0,0,.8)}
+.fill{position:absolute;left:0;bottom:0;width:100%;height:0;transition:height .5s ease;
+  background:linear-gradient(180deg,rgba(242,163,58,.32),rgba(242,163,58,.12));box-shadow:inset 0 1px 0 rgba(255,214,150,.5)}
+.file > *:not(.fill){position:relative}
+.thumb{width:100%;aspect-ratio:16/9;border-radius:14px;object-fit:cover;background:rgba(0,0,0,.25);display:block}
+.empty .thumb{display:grid;place-items:center;color:var(--mute);font-size:14px;border:1px dashed var(--line)}
+.name{font-weight:600;margin-top:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.about{color:var(--mute);font-size:14px}
+.qual{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.qual label{border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:14px;cursor:pointer;color:var(--mute);background:rgba(255,255,255,.04)}
+.qual label:hover{color:var(--ink)}
+.qual input{position:absolute;opacity:0;pointer-events:none}
+.qual label:has(input:checked){border-color:rgba(255,255,255,.45);color:var(--ink);font-weight:600;background:rgba(255,255,255,.16);box-shadow:var(--rim)}
+.qual label:has(input:focus-visible){outline:3px solid var(--amber);outline-offset:2px}
+.act{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;min-height:40px}
+.act .btn{height:40px}
+.btn-get{background:linear-gradient(180deg,#F7B95F,#E8932A);color:#1B1206;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 8px 20px -8px rgba(242,163,58,.7)}
+.btn-get:hover{filter:brightness(1.06)}
+.stage{font-size:14px;color:var(--mute)}
+.stage b{color:var(--ink);font-variant-numeric:tabular-nums}
+.note{font-size:13px;color:var(--amber-deep);margin-top:8px;min-height:20px}
+
+.tray{margin-top:22px;border-top:1px solid var(--line);padding-top:10px;font-size:14px;color:var(--mute);display:flex;justify-content:space-between}
+.tray{gap:16px}
+.tray span{flex-shrink:0}
+.tray b{color:var(--ink);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.landed .file{animation:land .7s cubic-bezier(.3,1.4,.5,1)}
+@keyframes land{0%{transform:translateY(0)}35%{transform:translateY(14px) scale(.98)}100%{transform:none}}
+
+footer{padding:18px 0;font-size:13px;color:var(--mute)}
+[hidden]{display:none!important}
+
+@media (max-width:820px){
+  body{padding:0 16px}
+  header{padding:14px 0}
+  main{grid-template-columns:minmax(0,1fr);gap:16px;align-content:start}
+  h1{font-size:40px;margin-bottom:16px}
+  .lede{display:none}
+  .thumb{max-height:18vh}
+  .tray{margin-top:10px}
+  footer{padding:10px 0}
+  /* shortcut: very short phones may still need a few px, so let them scroll rather than clip */
+  html,body{overflow:auto}
+}
+@media (max-height:700px) and (min-width:821px){.thumb{max-height:30vh}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="amb" aria-hidden="true"><img id="ambimg" alt=""></div>
+<header>Haseed</header>
+
+<main>
+  <section>
+    <h1>Paste a link.<br>Get the file.</h1>
+    <p class="lede">Works with YouTube, Instagram, TikTok, X, Facebook and over a thousand other sites. Files save to Desktop/Haseed.</p>
+    <form id="f" class="glass">
+      <label for="url" hidden>Video link</label>
+      <input id="url" type="url" placeholder="https://" required autocomplete="off" autofocus>
+      <button type="button" class="btn btn-quiet" id="paste">Paste</button>
+      <button class="btn btn-main" id="go">Look up</button>
+    </form>
+    <p class="msg" id="msg" role="status"></p>
+  </section>
+
+  <section id="side">
+    <div class="file glass empty" id="file">
+      <div class="fill" id="fill"></div>
+      <div class="thumb" id="ph">Your file will appear here</div>
+      <img class="thumb" id="th" alt="" hidden>
+      <div id="info" hidden>
+        <p class="name" id="tt" dir="auto"></p>
+        <p class="about" id="mm" dir="auto"></p>
+        <div class="qual" id="opts" role="radiogroup" aria-label="Quality"></div>
+        <div class="act">
+          <span class="stage" id="stage" aria-live="polite"></span>
+          <button class="btn btn-get" id="dl">Get file</button>
+          <button class="btn btn-main" id="reveal" hidden>Show in Finder</button>
+        </div>
+        <p class="note" id="note"></p>
+      </div>
+    </div>
+    <div class="tray"><span>Desktop/Haseed</span><b id="saved" dir="auto"></b></div>
+  </section>
+</main>
+
+<footer>Only download what you have the right to keep.</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const msg = (text, err) => { $('msg').textContent = text; $('msg').className = 'msg' + (err ? ' err' : ''); };
+const fmtDur = s => s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : '';
+const fmtSpeed = b => !b ? '' : b > 1048576 ? (b / 1048576).toFixed(1) + ' MB/s' : Math.round(b / 1024) + ' KB/s';
+const fmtEta = s => s == null ? '' : s >= 60 ? `${Math.floor(s / 60)} min left` : `${s} s left`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const call = async path => {
+  try { return await fetch(path); }
+  catch { throw new Error('Haseed stopped running. Open start.command (Mac) or start.bat (Windows) again, then retry.'); }
+};
+let current = '', savedName = '';
+
+$('paste').onclick = async () => {
+  try { $('url').value = (await navigator.clipboard.readText()).trim(); $('f').requestSubmit(); }
+  catch { $('url').focus(); }
+};
+
+function setFill(pct) { $('fill').style.height = pct + '%'; }
+
+function readyToGet() {
+  $('dl').hidden = false; $('dl').disabled = false; $('reveal').hidden = true;
+  $('stage').textContent = ''; setFill(0); document.body.classList.remove('landed');
+}
+
+$('f').onsubmit = async e => {
+  e.preventDefault();
+  current = $('url').value.trim();
+  $('go').disabled = true; msg('Looking up the link…');
+  try {
+    const r = await call('/api/info?url=' + encodeURIComponent(current));
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    $('file').classList.remove('empty'); $('ph').hidden = true;
+    $('th').hidden = !d.thumbnail; $('th').src = d.thumbnail || '';
+    $('ambimg').classList.toggle('on', !!d.thumbnail); if (d.thumbnail) $('ambimg').src = d.thumbnail;
+    $('info').hidden = false;
+    $('tt').textContent = d.title || 'Untitled';
+    $('mm').textContent = [d.site, d.uploader, fmtDur(d.duration)].filter(Boolean).join(', ');
+    const qs = d.qualities || [];
+    const pick = (qs.find(q => ['1080p', '720p', '480p', '360p'].includes(q.label)) || qs[0] || {}).height;
+    const choices = qs.map(q => [String(q.height), q.label]);
+    if (!qs.length) choices.push(['best', 'Video']);
+    choices.push(['audio', 'MP3']);
+    $('opts').innerHTML = choices.map(([v, l], i) =>
+      `<label><input type="radio" name="k" value="${v}" ${(pick ? v === String(pick) : i === 0) ? 'checked' : ''}>${l}</label>`).join('');
+    $('note').textContent = '';
+    readyToGet(); msg('');
+  } catch (err) { msg(err.message || "Couldn't read that link. Check it opens in your browser.", true); }
+  $('go').disabled = false;
+};
+
+$('opts').onchange = () => {
+  const label = document.querySelector('#opts input:checked').parentElement.textContent;
+  $('note').textContent = ['4K', '1440p'].includes(label) ? 'Sizes above 1080p are converted so QuickTime can play them. This takes a few extra minutes.' : '';
+  readyToGet();
+};
+
+$('dl').onclick = async () => {
+  const kind = document.querySelector('#opts input:checked').value;
+  $('dl').disabled = true; $('go').disabled = true; msg('');
+  $('stage').textContent = 'Starting…';
+  try {
+    const { id } = await (await call(`/api/start?kind=${kind}&url=` + encodeURIComponent(current))).json();
+    for (;;) {
+      await sleep(500);
+      const j = await (await call('/api/progress?id=' + id)).json();
+      if (j.stage === 'error') throw new Error(j.error);
+      if (j.percent != null) setFill(j.percent);
+      const pct = j.percent != null ? ` <b>${Math.floor(j.percent)}%</b>` : '';
+      const extra = [fmtSpeed(j.speed), fmtEta(j.eta)].filter(Boolean).join(', ');
+      $('stage').innerHTML = (j.label || 'Working') + pct + (extra ? ` <span>${extra}</span>` : '');
+      if (j.stage === 'done') {
+        savedName = j.saved;
+        $('stage').textContent = 'Saved';
+        $('dl').hidden = true; $('reveal').hidden = false;
+        $('saved').textContent = j.saved;
+        document.body.classList.add('landed');
+        break;
+      }
+    }
+  } catch (err) { msg(err.message || 'The download stopped. Try again.', true); readyToGet(); }
+  $('dl').disabled = false; $('go').disabled = false;
+};
+
+const isWin = navigator.userAgent.includes('Windows');
+if (isWin) $('reveal').textContent = 'Show in Explorer';
+$('reveal').onclick = async () => {
+  const r = await call('/api/reveal?name=' + encodeURIComponent(savedName));
+  if (!r.ok) msg((await r.json()).error, true);
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+"""Haseed — a small local web page for downloading videos with yt-dlp.
+
+Start it with start.command (Mac) or start.bat (Windows).
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import threading
+import uuid
+import webbrowser
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs, quote
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+# Tools installed into the venv (deno) must be on PATH for yt-dlp to find them
+os.environ["PATH"] = os.path.dirname(sys.executable) + os.pathsep + os.environ.get("PATH", "")
+try:
+    import static_ffmpeg
+    static_ffmpeg.add_paths(weak=True)  # use a system ffmpeg if there is one, else a bundled copy
+except ImportError:
+    pass
+import yt_dlp  # noqa: E402
+
+IS_MAC = sys.platform == "darwin"
+IS_WIN = sys.platform == "win32"
+DESKTOP = os.path.expanduser("~/Desktop")
+OUT = os.path.join(DESKTOP if os.path.isdir(DESKTOP) else os.path.expanduser("~"), "Haseed")
+PORT = int(os.environ.get("PORT", 8788))
+HAS_FFMPEG = shutil.which("ffmpeg") is not None
+JS = {"deno": {}, "node": {}}
+
+def pick_format(kind):
+    """kind is 'audio', 'best', or a max height like '2160'."""
+    if kind == "audio":
+        return "ba/b"
+    if kind.isdigit():
+        h = int(kind)
+        return f"bv*[height<={h}]+ba/b[height<={h}]"
+    return "bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b"  # unknown sizes: stay at 1080p or below
+
+
+def probe(url):
+    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "noplaylist": True, "js_runtimes": JS}) as ydl:
+        info = ydl.extract_info(url, download=False)
+    # Name each size by its width, so odd sizes (e.g. 3600x2026) still read as "4K"
+    names = [(3200, "4K"), (2300, "1440p"), (1700, "1080p"), (1100, "720p"), (750, "480p"), (560, "360p")]
+    qualities = {}
+    for f in info.get("formats") or []:
+        w, h = f.get("width"), f.get("height")
+        if not (w and h):
+            continue
+        label = next((n for limit, n in names if max(w, h) >= limit), None)
+        if label and h > qualities.get(label, 0):
+            qualities[label] = h
+    ranked = [(n, qualities[n]) for _, n in names if n in qualities]
+    return {
+        "title": info.get("title"),
+        "uploader": info.get("uploader") or info.get("channel"),
+        "site": info.get("extractor_key"),
+        "duration": info.get("duration"),
+        "thumbnail": info.get("thumbnail"),
+        "qualities": [{"label": n, "height": h} for n, h in ranked],
+    }
+
+
+JOBS = {}
+
+
+def fetch(url, kind, job):
+    tmp = tempfile.mkdtemp(prefix="haseed-")
+
+    def on_progress(d):
+        if d["status"] not in ("downloading", "finished"):
+            return
+        info = d.get("info_dict", {})
+        total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+        frac = 1 if d["status"] == "finished" else (d.get("downloaded_bytes", 0) / total if total else 0)
+        frac = min(frac, 1)
+        # YouTube etc. send video and audio as two files, one after the other.
+        # Show one bar across both: video fills 0-90%, the (small) audio 90-100%.
+        if kind != "audio" and info.get("acodec") == "none":
+            label, percent = "Downloading video", 90 * frac
+        elif kind != "audio" and info.get("vcodec") == "none":
+            label, percent = "Downloading audio", 90 + 10 * frac
+        else:
+            label, percent = "Downloading", 100 * frac
+        job.update(stage="downloading", label=label, percent=round(percent, 1),
+                   speed=d.get("speed"), eta=d.get("eta"))
+
+    def on_post(d):
+        if d["status"] == "started":
+            names = {"Merger": "Joining video and audio", "FFmpegExtractAudio": "Making the MP3"}
+            if d.get("postprocessor") in names:
+                job.update(stage="processing", label=names[d["postprocessor"]], percent=None, speed=None, eta=None)
+
+    opts = {
+        "quiet": True,
+        "noprogress": True,
+        "progress_hooks": [on_progress],
+        "postprocessor_hooks": [on_post],
+        "noplaylist": True,
+        "js_runtimes": JS,
+        "format": pick_format(kind),
+        # Highest resolution first; at equal resolution prefer H.264 + AAC, which
+        # QuickTime plays (YouTube's 1440p/4K is VP9/AV1 only and gets converted)
+        "format_sort": ["res", "vcodec:h264", "acodec:aac"],
+        "outtmpl": os.path.join(tmp, "%(title).80s.%(ext)s"),
+    }
+    if HAS_FFMPEG:
+        if kind == "audio":
+            opts["postprocessors"] = [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]
+        else:
+            opts["merge_output_format"] = "mp4"
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        ydl.download([url])
+    files = [os.path.join(tmp, f) for f in os.listdir(tmp)]
+    if not files:
+        raise RuntimeError("Nothing was downloaded")
+    path = max(files, key=os.path.getsize)
+    if HAS_FFMPEG and kind != "audio":
+        path = make_playable(path, job)
+    return tmp, path
+
+
+# Codecs QuickTime (and iPhone) can play inside an MP4
+OK_VIDEO = {"h264", "hevc"}
+OK_AUDIO = {"aac", "mp3", "alac"}
+
+
+def make_playable(path, job):
+    """Convert to H.264/AAC MP4 if the download uses codecs QuickTime can't play."""
+    height = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=height", "-of", "csv=p=0", path],
+        capture_output=True, text=True).stdout.strip()
+    height = int(height) if height.isdigit() else 1080
+    # ~1.5x YouTube's own VP9 rates; 45M made a 78-min 4K lecture 26.7 GB
+    bitrate = "24M" if height > 1440 else "12M" if height > 1080 else "6M"
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,codec_name", "-of", "csv=p=0", path],
+        capture_output=True, text=True).stdout.split()
+    codecs = [line.split(",") for line in out if "," in line]
+    video = [c for c, t in codecs if t == "video"]
+    audio = [c for c, t in codecs if t == "audio"]
+    v_ok = all(c in OK_VIDEO for c in video)
+    a_ok = all(c in OK_AUDIO for c in audio)
+    if v_ok and a_ok and path.endswith(".mp4"):
+        return path
+    fixed = os.path.splitext(path)[0] + ".playable.mp4"
+    duration = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path],
+        capture_output=True, text=True).stdout.strip()
+    duration = float(duration) if duration.replace(".", "", 1).isdigit() else 0
+    job.update(stage="converting", label="Converting for QuickTime", percent=0, speed=None, eta=None)
+    cmd = ["ffmpeg", "-y", "-v", "error", "-nostats", "-progress", "pipe:1", "-i", path, "-map", "0:v:0?", "-map", "0:a:0?"]
+    # Mac: fast hardware encoder. Elsewhere: x264, which every ffmpeg build has
+    encoder = ["h264_videotoolbox", "-b:v", bitrate] if IS_MAC else ["libx264", "-preset", "veryfast", "-crf", "20"]
+    cmd += ["-c:v", "copy"] if v_ok else ["-c:v", *encoder, "-tag:v", "avc1"]
+    cmd += ["-c:a", "copy"] if a_ok else ["-c:a", "aac", "-b:a", "192k"]
+    cmd += ["-movflags", "+faststart", fixed]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+    for line in proc.stdout:
+        if line.startswith("out_time_us=") and duration:
+            us = line.split("=")[1].strip()
+            if us.isdigit():
+                job["percent"] = round(min(100, int(us) / 1e6 / duration * 100), 1)
+    if proc.wait():
+        raise RuntimeError("Converting the video failed")
+    os.remove(path)
+    final = fixed.replace(".playable.mp4", ".mp4")
+    os.rename(fixed, final)
+    return final
+
+
+def save(path):
+    os.makedirs(OUT, exist_ok=True)
+    name = os.path.basename(path)
+    dest = os.path.join(OUT, name)
+    base, ext = os.path.splitext(name)
+    n = 1
+    while os.path.exists(dest):
+        n += 1
+        dest = os.path.join(OUT, f"{base} ({n}){ext}")
+    shutil.move(path, dest)
+    return os.path.basename(dest)
+
+
+def run_job(job, url, kind):
+    tmp = None
+    try:
+        tmp, path = fetch(url, kind, job)
+        job.update(stage="done", label="Saved", percent=100, saved=save(path), speed=None, eta=None)
+    except Exception as e:
+        job.update(stage="error", error=clean(e))
+    finally:
+        if tmp:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def end_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
+        super().end_headers()
+
+    def _json(self, code, data):
+        body = json.dumps(data).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        u = urlparse(self.path)
+        q = {k: v[0] for k, v in parse_qs(u.query).items()}
+        if u.path in ("/", "/index.html"):
+            with open(os.path.join(ROOT, "index.html"), "rb") as f:
+                body = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif u.path == "/api/info":
+            try:
+                self._json(200, probe(q.get("url", "")))
+            except Exception as e:
+                self._json(400, {"error": clean(e)})
+        elif u.path == "/api/start":
+            job_id = uuid.uuid4().hex[:12]
+            JOBS[job_id] = {"stage": "starting", "label": "Starting", "percent": 0}
+            threading.Thread(target=run_job, args=(JOBS[job_id], q.get("url", ""), q.get("kind", "best")),
+                             daemon=True).start()
+            self._json(200, {"id": job_id})
+        elif u.path == "/api/reveal":
+            path = os.path.join(OUT, os.path.basename(q.get("name", "")))
+            if not os.path.isfile(path):
+                return self._json(404, {"error": "That file is no longer in the Haseed folder"})
+            if IS_WIN:
+                subprocess.run(["explorer", "/select,", path])
+            elif IS_MAC:
+                subprocess.run(["open", "-R", path])
+            else:
+                subprocess.run(["xdg-open", OUT])
+            self._json(200, {"ok": True})
+        elif u.path == "/api/progress":
+            job = JOBS.get(q.get("id", ""))
+            self._json(200 if job else 404, job or {"error": "unknown download"})
+        else:
+            self._json(404, {"error": "not found"})
+
+
+def clean(e):
+    msg = str(e).replace("ERROR: ", "")
+    return msg.split("; please report")[0][:300]
+
+
+if __name__ == "__main__":
+    try:
+        srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    except OSError:
+        webbrowser.open(f"http://localhost:{PORT}")
+        sys.exit(f"Haseed is already running at http://localhost:{PORT}")
+    if not os.environ.get("HASEED_NO_BROWSER"):
+        threading.Timer(1, webbrowser.open, [f"http://localhost:{PORT}"]).start()
+    print(f"Haseed running on http://localhost:{PORT}  (ffmpeg: {'yes' if HAS_FFMPEG else 'no'})", flush=True)
+    srv.serve_forever()
