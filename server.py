@@ -48,9 +48,42 @@ def pick_format(kind):
     return "bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b"  # unknown sizes: stay at 1080p or below
 
 
+# Haseed refuses adult content, three ways:
+# 1. these sites, named as yt-dlp names them (its own 18+ marking also catches general
+#    sites like YouTube or Reddit, so this list is picked by hand from it),
+ADULT_SITES = frozenset("""
+    AlphaPorno Beeg BehindKink BongaCams CAM4 Camsoda Chaturbate DrTuber EMPFlix Eporner
+    EroProfile Erocast FourTube Fux HellPorno Iwara LoveHomePorn MovieFap Murrtube MyVidster
+    NonkTube NoodleMagazine NubilesPorn Nuvid PeekVids PlayVids PornFlip PornHub PornTop
+    PornTube Pornbox PornerBros PornoVoisines PornoXO Pornotube Pr0gramm RedGifs RedTube
+    Rule34Video Scrolller Sexu Slutload SpankBang Stripchat SunPorno TNAFlix TNAFlixNetworkEmbed
+    ThisVid ThisVidPlaylist Toypics Tube8 Txxx XHamster XHamsterEmbed XNXX XVideos
+    XVideosQuickies XXXYMovies YouJizz YouPorn ZenPorn
+""".split())
+# 2. any site whose address contains one of these words (for sites yt-dlp doesn't name),
+ADULT_ADDRESS = re.compile(
+    r"porn|xxx|nsfw|hentai|onlyfans|fansly|xvideo|xnxx|xhamster|redtube|youjizz|camgirl|rule34"
+    r"|(?:^|[.-])(?:sex|nude|erotic|milf)")  # these only at the start of a name part: not "essex"
+# 3. any single video a site marks 18+ (yt-dlp's age_limit), e.g. on YouTube or Reddit.
+AGE_LIMIT = 17
+BLOCKED = "Haseed doesn't download adult content"
+_SITES = list(yt_dlp.extractor.gen_extractor_classes())
+
+
+def check_allowed(url):
+    host = (urlparse(url).hostname or "").lower()
+    site = next((ie.ie_key() for ie in _SITES if ie.ie_key() != "Generic" and ie.suitable(url)), None)
+    if site in ADULT_SITES or ADULT_ADDRESS.search(host):
+        raise RuntimeError(BLOCKED)
+
+
 def probe(url):
-    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "noplaylist": True, "js_runtimes": JS}) as ydl:
+    check_allowed(url)
+    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "noplaylist": True, "js_runtimes": JS,
+                           "age_limit": AGE_LIMIT}) as ydl:
         info = ydl.extract_info(url, download=False)
+    if not info or info.get("extractor_key") in ADULT_SITES or (info.get("age_limit") or 0) > AGE_LIMIT:
+        raise RuntimeError(BLOCKED)
     # Name each size by its width, so odd sizes (e.g. 3600x2026) still read as "4K"
     names = [(3200, "4K"), (2300, "1440p"), (1700, "1080p"), (1100, "720p"), (750, "480p"), (560, "360p")]
     qualities = {}
@@ -76,6 +109,7 @@ JOBS = {}
 
 
 def fetch(url, kind, job):
+    check_allowed(url)
     tmp = tempfile.mkdtemp(prefix="haseed-")
 
     def on_progress(d):
@@ -109,6 +143,7 @@ def fetch(url, kind, job):
         "postprocessor_hooks": [on_post],
         "noplaylist": True,
         "js_runtimes": JS,
+        "age_limit": AGE_LIMIT,
         "format": pick_format(kind),
         # Highest resolution first; at equal resolution prefer H.264 + AAC, which
         # QuickTime plays (YouTube's 1440p/4K is VP9/AV1 only and gets converted)

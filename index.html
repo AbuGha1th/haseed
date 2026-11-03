@@ -212,6 +212,7 @@ const TEXT = {
       'Downloading': 'جارٍ التحميل', 'Joining video and audio': 'دمج الفيديو والصوت', 'Making the MP3': 'إنشاء ملف MP3',
       'Converting for QuickTime': 'التحويل ليعمل على QuickTime', 'Saved': 'تم الحفظ',
       'That file is no longer in the Haseed folder': 'لم يعد الملف في مجلد Haseed',
+      "Haseed doesn't download adult content": 'حصيد لا يحمّل المحتوى غير اللائق',
       'Wrong PIN': 'الرمز غير صحيح', 'Too many wrong tries. Wait 10 minutes.': 'محاولات خاطئة كثيرة. انتظر 10 دقائق.',
       'Enter the PIN shown on your computer': 'أدخل الرمز الظاهر على جهاز الكمبيوتر',
     },
@@ -309,7 +310,7 @@ $('f').onsubmit = async e => {
   try {
     const r = await call('/api/info?url=' + encodeURIComponent(current));
     const d = await r.json();
-    if (!r.ok) throw new Error(d.error);
+    if (!r.ok) throw new Error(tr(d.error));
     $('file').classList.remove('empty'); $('ph').hidden = true;
     $('th').hidden = !d.thumbnail; $('th').src = d.thumbnail || '';
     $('ambimg').classList.toggle('on', !!d.thumbnail);
@@ -346,7 +347,7 @@ $('dl').onclick = async () => {
     for (;;) {
       await sleep(500);
       const j = await (await call('/api/progress?id=' + id)).json();
-      if (j.stage === 'error') throw new Error(j.error);
+      if (j.stage === 'error') throw new Error(tr(j.error));
       if (j.percent != null) setFill(j.percent);
       const pct = j.percent != null ? ` <b>${Math.floor(j.percent)}%</b>` : '';
       const extra = [fmtSpeed(j.speed), fmtEta(j.eta)].filter(Boolean).join(lang === 'ar' ? '، ' : ', ');
