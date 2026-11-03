@@ -67,6 +67,28 @@ ADULT_ADDRESS = re.compile(
 # 3. any single video a site marks 18+ (yt-dlp's age_limit), e.g. on YouTube or Reddit.
 AGE_LIMIT = 17
 BLOCKED = "Haseed doesn't download adult content"
+
+# Music services are refused the same way, by yt-dlp's name for them and by address.
+# Podcast and radio sites stay allowed: many carry lessons and talks.
+MUSIC_SITES = frozenset("""
+    Audiomack AudiomackAlbum Audius AudiusPlaylist AudiusProfile AudiusTrack Bandcamp BandcampAlbum
+    BandcampUser BandcampWeekly Bandlab BandlabPlaylist Beatport Clyp DiscogsReleasePlaylist EpidemicSound
+    GameJoltGameSoundtrack Genius GeniusLyrics HearThisAt Hungama HungamaAlbumPlaylist HungamaSong
+    IdagioPersonalPlaylist IdagioPlaylist IdagioTrack Jamendo JamendoAlbum JioSaavnAlbum JioSaavnArtist
+    JioSaavnPlaylist JioSaavnSong LastFM LastFMPlaylist LastFMUser MailRuMusic MailRuMusicSearch MelonVOD
+    Mixcloud MixcloudPlaylist MixcloudUser MonsterSirenHypergryphMusic NetEaseMusic NetEaseMusicAlbum
+    NetEaseMusicList NetEaseMusicMv NetEaseMusicSinger QQMusic QQMusicAlbum QQMusicPlaylist QQMusicSinger
+    QQMusicToplist QQMusicVideo RadioJavan ReverbNation RinseFMArtistPlaylist Soundcloud SoundcloudEmbed
+    SoundcloudPlaylist SoundcloudRelated SoundcloudSearch SoundcloudSet SoundcloudTrackStation SoundcloudUser
+    SoundcloudUserPermalink TikTokSound Vevo VevoPlaylist YandexMusicAlbum YandexMusicArtistAlbums
+    YandexMusicArtistTracks YandexMusicPlaylist YandexMusicTrack YoutubeMusicSearchURL ZingMp3ChartMusicVideo
+""".split())
+MUSIC_HOSTS = ("music.youtube.com", "spotify.com", "deezer.com", "music.apple.com", "itunes.apple.com",
+               "tidal.com", "anghami.com", "shazam.com", "soundcloud.com", "bandcamp.com", "audiomack.com",
+               "boomplay.com", "gaana.com", "jiosaavn.com", "mixcloud.com", "napster.com", "qobuz.com",
+               "last.fm", "genius.com", "music.amazon.com", "music.yandex.ru", "music.yandex.com", "vevo.com",
+               "zingmp3.vn", "music.163.com", "y.qq.com", "pandora.com", "iheart.com", "beatport.com")
+MUSIC = "Haseed doesn't download from music sites"
 _SITES = list(yt_dlp.extractor.gen_extractor_classes())
 
 
@@ -75,6 +97,8 @@ def check_allowed(url):
     site = next((ie.ie_key() for ie in _SITES if ie.ie_key() != "Generic" and ie.suitable(url)), None)
     if site in ADULT_SITES or ADULT_ADDRESS.search(host):
         raise RuntimeError(BLOCKED)
+    if site in MUSIC_SITES or any(host == h or host.endswith("." + h) for h in MUSIC_HOSTS):
+        raise RuntimeError(MUSIC)
 
 
 def probe(url):
@@ -84,6 +108,8 @@ def probe(url):
         info = ydl.extract_info(url, download=False)
     if not info or info.get("extractor_key") in ADULT_SITES or (info.get("age_limit") or 0) > AGE_LIMIT:
         raise RuntimeError(BLOCKED)
+    if info.get("extractor_key") in MUSIC_SITES:
+        raise RuntimeError(MUSIC)
     # Name each size by its width, so odd sizes (e.g. 3600x2026) still read as "4K"
     names = [(3200, "4K"), (2300, "1440p"), (1700, "1080p"), (1100, "720p"), (750, "480p"), (560, "360p")]
     qualities = {}

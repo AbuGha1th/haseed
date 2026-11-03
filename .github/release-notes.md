@@ -1,3 +1,7 @@
+> Built by a Salafi brother for the sake of Allah, for Muslims who fear Allah and want to download lessons of the mashāyikh and beneficial clips that help them worship Allah and draw closer to Him. So fear Allah in how you use it. Most haram websites are blocked anyway.
+>
+> صنعه أخٌ سلفي ابتغاءَ وجه الله، للمسلمين الذين يخشون الله ويريدون تحميل دروس المشايخ والمقاطع النافعة التي تعينهم على عبادة الله والتقرّب إليه. فاتّقِ الله في استخدامه، وقد حُجبت أكثر المواقع المحرّمة على كل حال.
+
 ## Release files
 
 #### Recommended

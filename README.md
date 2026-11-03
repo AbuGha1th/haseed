@@ -2,6 +2,8 @@
 
 [العربية](README.ar.md)
 
+> **Built by a Salafi brother for the sake of Allah, for Muslims who fear Allah and want to download lessons of the mashāyikh and beneficial clips that help them worship Allah and draw closer to Him. So fear Allah in how you use it. Most haram websites are blocked anyway.**
+
 Paste a link, get the file. Haseed is a small page that runs on your own computer and downloads videos from YouTube, Instagram, TikTok, X, Facebook and [over a thousand other sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md), using [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 
 ![Haseed start screen](docs/home-v2.png)
@@ -79,5 +81,6 @@ The easiest way is the **Haseed-Android.apk** above. If you'd rather not install
 ## Good to know
 
 - Haseed only listens on your own computer (`127.0.0.1`), so nobody else can reach it, unless you switch on phone mode, which needs the PIN.
+- Adult sites and music sites are blocked, and so is any video a site marks 18+.
 - Download only what you have the right to keep. Some sites' terms forbid downloading, and you are responsible for how you use this.
 - Haseed is not affiliated with yt-dlp. Report download problems for a specific site to Haseed first, not to yt-dlp.
